@@ -1,191 +1,143 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { setUserInfo } from "../../slice/authSlice.js";
-import { IoArrowBack } from "react-icons/io5";
-import { useNavigate } from "react-router-dom";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getColor } from "../../lib/utils.js";
-import { FaPlus, FaTrash } from "react-icons/fa";
-import { Input } from "@/components/ui/input";
-import { colors } from "../../lib/utils.js";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import {
-  useRemoveProfileImageMutation,
-  useUpdateProfileMutation,
-} from "../../services/authApi.js";
-import { useAddProfileImageMutation } from "../../services/authApi.js";
-import { HOST } from "../../utils/constants";
+  useUserInfoQuery,
+  useProfileUpdateMutation,
+} from "@/redux/ApiSlice/User.slice";
+import { IoArrowBack } from "react-icons/io5";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { getColor, colors } from "@/utils/Utils";
+import { FaTrash, FaPlus } from "react-icons/fa";
+import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
+import Cookies from "js-cookie";
+import { SetUserData } from "@/redux/ApiSlice/UserData.slice";
+import { toast } from "sonner";
 
-const Profile = () => {
-  const userInfo = useSelector((state) => state.auth?.userInfo);
+function Profile() {
+  const { data: users } = useUserInfoQuery();
+  const [updateProfile] = useProfileUpdateMutation();
   const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const [updateProfile] = useUpdateProfileMutation();
-  const [AddProfileImage] = useAddProfileImageMutation();
-  const [RemoveProfileImage] = useRemoveProfileImageMutation();
+  const token =
+    useSelector((state) => state.auth?.token) || Cookies.get("token");
+
+  console.log(users?.data?.setColor, "saibaz saay");
+  console.log(token, "tokem");
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [color, setColor] = useState("");
   const [image, setImage] = useState(null);
+  const [selectedColor, setSelectedColor] = useState(null);
   const [hovered, setHovered] = useState(false);
-  const [selectedColor, setSelectedColor] = useState(0);
-  // console.log(selectedColor);
+  const navigate = useNavigate();
+
   const fileInputRef = useRef(null);
 
+  console.log(selectedColor, "satetetet");
+
   useEffect(() => {
-    if (userInfo.profileSetup) {
-      setFirstName(userInfo.firstName);
-      setLastName(userInfo.lastName);
-      setSelectedColor(userInfo.color);
+    setFirstName(users?.data?.firstName || null);
+    setLastName(users?.data?.lastName || null);
+    const clr = users?.data?.setColor;
+    setSelectedColor(users?.data?.setColor || clr);
+    setImage(users?.data?.image || null);
+    Cookies.set("profileSetup", users?.data?.profileSetup);
+    if (users?.data) {
+      dispatch(SetUserData(users?.data));
     }
-    if (userInfo.image) {
-      setImage(`${HOST}/${userInfo.image}`);
-    }
-   
-    
-  }, [userInfo]);
-
-  const validateProfile = () => {
-    if (!firstName) {
-      toast.error("First Name is required");
-      return false;
-    }
-    if (!lastName) {
-      toast.error("Last Name is required");
-      return false;
-    }
-    return true;
-  };
-
-  const saveChanges = async () => {
-    if (validateProfile()) {
-      try {
-        const response = await updateProfile({
-          firstName,
-          lastName,
-          color: selectedColor,
-        }).unwrap();
-        if (response.id) {
-          dispatch(setUserInfo(response));
-          toast.success("Profile updated successfully");
-          navigate("/chat");
-        }
-      } catch (error) {
-        console.log(error);
-      }
-    }
-  };
+  }, [users]);
 
   const handleNavigate = () => {
-    if (userInfo.profileSetup) {
+    if (users?.data?.profileSetup) {
       navigate("/chat");
-    } else {
-      toast.error("Please setup profile");
     }
   };
 
-  const handleFileInputClick = () => {
-    fileInputRef.current.click();
-  };
-
-  const handleImageChange = async (event) => {
-    console.log("hii");
+  // Handle file selection
+  const handleFileChange = (event) => {
     const file = event.target.files[0];
-    console.log({ file });
+
     if (file) {
-      const formData = new FormData();
-      formData.append("profile-image", file);
-      const response = await AddProfileImage(formData).unwrap();
+      const imageUrl = URL.createObjectURL(file);
 
-      dispatch(setUserInfo({ userInfo, image: response.image }));
-      console.log(image);
-      toast.success("Profile image updated successfully");
-      setImage(response.image);
-
-      // const reader = new FileReader()
-      // reader.omLoad = () => (
-      //   setImage(reader.result)
-      // )
-      // reader.readAsDataURL(file)
+      setImage(imageUrl);
     }
   };
 
   const handleDeleteImage = async () => {
+    setImage(null);
+  };
+
+  // Function to trigger file input
+  const handleAvatarClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleSubmitProfile = async () => {
+    if (!firstName || !lastName) {
+      alert("First Name and Last Name are required");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("firstName", firstName);
+    formData.append("lastName", lastName);
+    formData.append("selectedColor", selectedColor);
+
+    if (fileInputRef.current?.files.length > 0) {
+      formData.append("profileImage", fileInputRef.current.files[0]);
+    } else if (image) {
+      formData.append("profileImage", image);
+    }
+
     try {
-      console.log("Starting profile image deletion...");
-      console.log("Current userInfo.image:", userInfo.image);
-      
-      const response = await RemoveProfileImage({
-        image: userInfo.image
-      }).unwrap();
-      
-      console.log("API Response:", response);
-      console.log("Response type:", typeof response);
-      
-      // Update state after successful API call
-      dispatch(setUserInfo({ ...userInfo, image: null }));
-      setImage(null);
-      console.log("State updated successfully");
-      
-      // Show success toast
-      toast.success("Profile image removed successfully");
-      console.log("Success toast should be displayed");
+      const token = Cookies.get("token");
+      const res = await updateProfile(formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      toast(res?.data?.message);
+      handleNavigate();
     } catch (error) {
-      // Log detailed error information
-      console.error("Error removing profile image:", error);
-      console.error("Error type:", typeof error);
-      console.error("Error message:", error.message);
-      console.error("Error stack:", error.stack);
-      
-      toast.error("Failed to remove profile image");
-      console.log("Error toast displayed");
+      toast("Faield to update", error);
     }
   };
-  {/**
-     const handleDeleteImage = async () => {
-    try {
-    const response = await }
-  };
-     */}
 
   return (
-    <div className="bg-[#1b1c24] h-[100vh] flex items-center justify-center flex-col gap-10 ">
+    <div className="bg-[#1b1c24] h-[100vh] flex flex-col items-center justify-center gap-10">
       <div className="flex flex-col gap-10 w-[80vw] md:w-max">
         <div onClick={handleNavigate}>
           <IoArrowBack className="text-4xl lg:text-6xl text-white/90 cursor-pointer" />
         </div>
-        <div className="grid grid-col-2">
+        <div className="grid grid-cols-2">
           <div
             className="h-full w-32 md:w-48 md:h-48 relative flex items-center justify-center"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
+            onClick={image ? handleDeleteImage : handleAvatarClick} // Trigger file input on click
           >
-            <Avatar className="h-32 w-32 md:w-48 md:h-48 rounded-full overflow-hidden">
+            <Avatar className="h-24 w-24 md:w-32 md:h-32 rounded-full overflow-hidden">
               {image ? (
                 <AvatarImage
                   src={image}
-                  alt="profile"
+                  alt="Profile"
                   className="object-cover w-full h-full bg-black"
                 />
               ) : (
                 <div
-                  className={`uppercase h-32 w-32 md:w-48 md:h-48 text-5xl border-[1px] flex items-center justify-center rounded-full ${getColor(
+                  className={`h-24 w-24 uppercase md:w-32 md:h-32 text-5xl border-[1px] flex items-center justify-center rounded-full ${getColor(
                     selectedColor
                   )}`}
                 >
-                  {firstName
-                    ? firstName.split("").shift()
-                    : userInfo.email.split("").shift()}
+                  {firstName ? firstName.charAt(0) : "U"}
                 </div>
               )}
             </Avatar>
             {hovered && (
-              <div
-                className="absolute inset-0 flex items-center justify-center bg-black/50 ring-fuchsia-50 rounded-full"
-                onClick={image ? handleDeleteImage : handleFileInputClick}
-              >
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50 ring-fuchsia-50 rounded-full">
                 {image ? (
                   <FaTrash className="text-white text-3xl cursor-pointer" />
                 ) : (
@@ -193,53 +145,51 @@ const Profile = () => {
                 )}
               </div>
             )}
+            {/* Hidden file input */}
             <input
               type="file"
               ref={fileInputRef}
               className="hidden"
-              onChange={handleImageChange}
+              accept="image/*"
               name="profile-image"
-              accept=".png ,.jpg ,.jpeg ,.svg ,.webp"
+              onChange={handleFileChange}
             />
           </div>
-          <div className="flex min-w-32 md:min-w-64 flex-col gap-5 text-white items-center justify-center">
+
+          <div className="flex min-w-32 md:min-w-64 flex-col gap-5 items-center justify-center text-white">
             <div className="w-full">
               <Input
                 placeholder="Email"
                 type="email"
                 disabled
-                value={userInfo.email}
-                className="rounded-lg p-6 bg-[#2c2e3b] border-none "
+                value={users?.data?.email}
+                className="rounded-lg p-6 bg-[#2c2e3b] border-none"
               />
             </div>
             <div className="w-full">
               <Input
                 placeholder="First Name"
                 type="text"
-                onChange={(e) => {
-                  setFirstName(e.target.value);
-                }}
                 value={firstName}
-                className="rounded-lg p-6 bg-[#2c2e3b] border-none "
+                onChange={(e) => setFirstName(e.target.value)}
+                className="rounded-lg p-6 bg-[#2c2e3b] border-none"
               />
             </div>
             <div className="w-full">
               <Input
-                placeholder="LastName"
+                placeholder="Last Name"
                 type="text"
-                onChange={(e) => {
-                  setLastName(e.target.value);
-                }}
                 value={lastName}
-                className="rounded-lg p-6 bg-[#2c2e3b] border-none "
+                onChange={(e) => setLastName(e.target.value)}
+                className="rounded-lg p-6 bg-[#2c2e3b] border-none"
               />
             </div>
-            <div className="w-full flex gap-5 ">
-              {colors.map((color, index) => (
+            <div className="w-full flex gap-5">
+              {colors?.map((color, index) => (
                 <div
-                  className={`${color} h-8 w-8 rounded-full cursor-pointer transition-all duration-300
-                  ${selectedColor === index ? " outline-white outline-1" : ""}
-                  `}
+                  className={`${color} h-8 w-8 rounded-full cursor-pointer transition-all duration-300 ${
+                    selectedColor === index ? " outline-white/80 outline-2" : ""
+                  }`}
                   key={index}
                   onClick={() => setSelectedColor(index)}
                 ></div>
@@ -248,16 +198,17 @@ const Profile = () => {
           </div>
         </div>
         <div className="w-full">
-          <Button
-            className="h-16 w-full bg-purple-700 hover:bg-purple-900 duration-300 "
-            onClick={saveChanges}
+          <button
+            type="button"
+            className="text-white w-full bg-yellow-400 hover:bg-yellow-800 transition duration-300 font-bold rounded-lg px-5 py-2.5 cursor-pointer"
+            onClick={handleSubmitProfile}
           >
-            Save Changes
-          </Button>
+            Save Profile
+          </button>
         </div>
       </div>
     </div>
   );
-};
+}
 
 export default Profile;

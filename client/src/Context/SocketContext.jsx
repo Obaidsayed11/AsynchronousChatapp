@@ -1,4 +1,4 @@
- import { addMessage } from '@/redux/ApiSlice/Chat.slice';
+import { addMessage } from '@/redux/ApiSlice/Chat.slice';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { io } from 'socket.io-client';
@@ -64,6 +64,3 @@ export const SocketProvider = ({ children }) => {
 
     return <SocketContext.Provider value={socketInstance}>{children}</SocketContext.Provider>;
 };
-
-
-
