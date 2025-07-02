@@ -40,9 +40,22 @@ A feature-rich real-time chat application built with modern technologies for sea
 | Socket.io      | Real-time WebSocket Communication |
 | JWT            | Token-based Authentication     |
 
+
 ---
 
 ## 📸 Screenshots
+This is the Login Page
+![image](https://github.com/user-attachments/assets/1908411b-701d-4127-80cf-609070688a8f)
+
+This is the SignUp Page
+![image](https://github.com/user-attachments/assets/35afd9a9-9531-43b7-afe0-f0e1442047bd)
+
+This is the Profile Setup Page
+![Screenshot 2025-07-02 170513](https://github.com/user-attachments/assets/91599a4e-f2ea-4930-aba8-6fc9669d3ac4)
+
+This is the Chat UI
+![image](https://github.com/user-attachments/assets/6cf08c29-c8a3-4fdd-a6c4-377b33eaef81)
+
 
 
 
@@ -58,5 +71,5 @@ A feature-rich real-time chat application built with modern technologies for sea
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-username/chat-app.git
+git clone https://github.com/Obaidsayed11/AsynchronousChatapp.git
 cd chat-app
